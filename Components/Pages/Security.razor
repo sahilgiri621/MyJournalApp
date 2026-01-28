@@ -1,0 +1,170 @@
+@page "/security"
+@using MyJournalApp.Services
+@inject AuthService AuthService
+
+<PageTitle>Security - My Journal App</PageTitle>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Security &amp; Privacy</h1>
+        <button class="btn btn-outline-primary" @onclick="LockNow" disabled="@(!AuthService.IsPinSet)">Lock Now</button>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2>PIN Protection</h2>
+            <p class="text-muted">Protect your journal with a PIN. This uses secure storage on your device.</p>
+
+            @if (!AuthService.IsPinSet)
+            {
+                <div class="form-group mb-3">
+                    <label class="form-label" for="newPin">New PIN</label>
+                    <InputText id="newPin" type="password" class="form-control" @bind-Value="newPin" />
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label" for="confirmNewPin">Confirm PIN</label>
+                    <InputText id="confirmNewPin" type="password" class="form-control" @bind-Value="confirmNewPin" />
+                </div>
+                <button class="btn btn-primary" @onclick="SetPin">Enable PIN</button>
+            }
+            else
+            {
+                <div class="form-group mb-3">
+                    <label class="form-label" for="currentPin">Current PIN</label>
+                    <InputText id="currentPin" type="password" class="form-control" @bind-Value="currentPin" />
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label" for="changePin">New PIN</label>
+                    <InputText id="changePin" type="password" class="form-control" @bind-Value="changePin" />
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label" for="confirmChangePin">Confirm New PIN</label>
+                    <InputText id="confirmChangePin" type="password" class="form-control" @bind-Value="confirmChangePin" />
+                </div>
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-primary" @onclick="UpdatePin">Update PIN</button>
+                </div>
+
+                <hr />
+
+                <div class="form-group mb-3">
+                    <label class="form-label" for="disablePin">Enter PIN to disable</label>
+                    <InputText id="disablePin" type="password" class="form-control" @bind-Value="disablePin" />
+                </div>
+                <button class="btn btn-outline-danger" @onclick="DisablePin">Disable PIN</button>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">@errorMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <div class="alert alert-info mt-3" role="alert">@statusMessage</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string newPin = string.Empty;
+    private string confirmNewPin = string.Empty;
+    private string currentPin = string.Empty;
+    private string changePin = string.Empty;
+    private string confirmChangePin = string.Empty;
+    private string disablePin = string.Empty;
+
+    private string statusMessage = string.Empty;
+    private string errorMessage = string.Empty;
+
+    private async Task SetPin()
+    {
+        ResetMessages();
+
+        if (!ValidateNewPin(newPin, confirmNewPin))
+        {
+            return;
+        }
+
+        await AuthService.SetPinAsync(newPin);
+        statusMessage = "PIN enabled successfully.";
+        newPin = string.Empty;
+        confirmNewPin = string.Empty;
+    }
+
+    private async Task UpdatePin()
+    {
+        ResetMessages();
+
+        if (!ValidateNewPin(changePin, confirmChangePin))
+        {
+            return;
+        }
+
+        var success = await AuthService.ChangePinAsync(currentPin, changePin);
+        if (!success)
+        {
+            errorMessage = "Current PIN is incorrect.";
+            return;
+        }
+
+        statusMessage = "PIN updated successfully.";
+        currentPin = string.Empty;
+        changePin = string.Empty;
+        confirmChangePin = string.Empty;
+    }
+
+    private async Task DisablePin()
+    {
+        ResetMessages();
+
+        var success = await AuthService.ClearPinAsync(disablePin);
+        if (!success)
+        {
+            errorMessage = "PIN is incorrect.";
+            return;
+        }
+
+        statusMessage = "PIN disabled successfully.";
+        disablePin = string.Empty;
+    }
+
+    private void LockNow()
+    {
+        AuthService.Lock();
+        statusMessage = "Journal locked.";
+    }
+
+    private bool ValidateNewPin(string pin, string confirmPin)
+    {
+        if (string.IsNullOrWhiteSpace(pin) || string.IsNullOrWhiteSpace(confirmPin))
+        {
+            errorMessage = "Please enter and confirm your PIN.";
+            return false;
+        }
+
+        if (pin.Length < 4)
+        {
+            errorMessage = "PIN must be at least 4 characters.";
+            return false;
+        }
+
+        if (!string.Equals(pin, confirmPin, StringComparison.Ordinal))
+        {
+            errorMessage = "PIN entries do not match.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private void ResetMessages()
+    {
+        errorMessage = string.Empty;
+        statusMessage = string.Empty;
+    }
+}
+
+
+

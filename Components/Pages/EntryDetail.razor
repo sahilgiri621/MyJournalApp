@@ -1,0 +1,92 @@
+@page "/entry/{Id:guid}"
+@using MyJournalApp.Models
+@using MyJournalApp.Services
+@inject JournalService JournalService
+@inject MarkdownService MarkdownService
+
+<PageTitle>Entry - My Journal App</PageTitle>
+
+@if (isLoading)
+{
+    <div class="container">
+        <div class="alert alert-info" role="alert">Loading entry...</div>
+    </div>
+}
+else if (entry == null)
+{
+    <div class="container">
+        <div class="alert alert-warning" role="alert">
+            <strong>Entry not found.</strong> It may have been deleted.
+        </div>
+        <a href="/journal-list" class="btn btn-secondary">Back to List</a>
+    </div>
+}
+else
+{
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>@entry.Title</h1>
+                <p class="text-muted mb-0">@entry.EntryDate.ToString("MMMM dd, yyyy")</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/edit-entry/@entry.Id" class="btn btn-outline-primary">Edit</a>
+                <a href="/journal-list" class="btn btn-secondary">Back</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <p class="text-muted">
+                    <strong>Mood:</strong> @entry.PrimaryMood
+                    @if (entry.SecondaryMoods.Count > 0)
+                    {
+                        <span>(Secondary: @string.Join(", ", entry.SecondaryMoods))</span>
+                    }
+                </p>
+
+                @if (!string.IsNullOrWhiteSpace(entry.Category))
+                {
+                    <p class="text-muted"><strong>Category:</strong> @entry.Category</p>
+                }
+
+                @if (entry.Tags.Count > 0)
+                {
+                    <div class="tag-list mb-3">
+                        @foreach (var tag in entry.Tags)
+                        {
+                            <span class="tag-chip">@tag</span>
+                        }
+                    </div>
+                }
+
+                <div class="markdown-preview">
+                    @((MarkupString)MarkdownService.ToHtml(entry.Content))
+                </div>
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+                    Created: @entry.CreatedAt.ToString("MMM dd, yyyy 'at' h:mm tt") |
+                    Updated: @entry.UpdatedAt.ToString("MMM dd, yyyy 'at' h:mm tt")
+                </small>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private JournalEntry? entry;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        entry = await JournalService.GetEntryAsync(Id);
+        isLoading = false;
+    }
+}
+
+
+

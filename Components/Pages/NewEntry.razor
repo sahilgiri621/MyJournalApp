@@ -1,0 +1,665 @@
+@page "/new-entry"
+@using MyJournalApp.Models
+@using MyJournalApp.Services
+@inject JournalService JournalService
+@inject NavigationManager Navigation
+@inject MarkdownService MarkdownService
+@inject IJSRuntime JS
+
+<PageTitle>New Entry - My Journal App</PageTitle>
+
+<style>
+    .journal-scene {
+        min-height: 100vh;
+        padding: 2.5rem 1.25rem 3rem;
+        background: transparent;
+    }
+
+    .entry-shell {
+        max-width: 1120px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .entry-hero.card {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        border-color: var(--border-soft);
+        box-shadow: none;
+    }
+
+    .entry-title {
+        font-size: clamp(2.3rem, 3vw, 2.8rem);
+        margin: 0.15rem 0;
+    }
+
+    .entry-subtitle {
+        margin: 0;
+        color: var(--text-muted);
+        max-width: 320px;
+    }
+
+    .entry-date-pill {
+        text-align: right;
+        font-weight: 600;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+    }
+
+    .entry-date-pill strong {
+        display: block;
+        font-size: 1rem;
+        color: var(--text-light);
+    }
+
+    .entry-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+        gap: 1.5rem;
+    }
+
+    .entry-form {
+        gap: 1.25rem;
+        border-color: var(--border-soft);
+        background: var(--bg-card-light);
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08);
+        padding: 1.75rem;
+    }
+
+    .entry-form,
+    .entry-panel,
+    .entry-field,
+    .entry-panel h3,
+    .entry-panel p,
+    .entry-panel li,
+    .entry-hero,
+    .entry-hero h1,
+    .entry-hero p,
+    .entry-date-pill,
+    .entry-date-pill strong {
+        color: var(--text-light);
+    }
+
+    body.dark .entry-form,
+    body.dark .entry-panel,
+    body.dark .entry-field,
+    body.dark .entry-panel h3,
+    body.dark .entry-panel p,
+    body.dark .entry-panel li,
+    body.dark .entry-hero,
+    body.dark .entry-hero h1,
+    body.dark .entry-hero p,
+    body.dark .entry-date-pill,
+    body.dark .entry-date-pill strong {
+        color: var(--text-dark);
+    }
+
+    .entry-fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+    }
+
+    .entry-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .entry-field.full {
+        grid-column: 1 / -1;
+    }
+
+    .entry-panel {
+        gap: 1.1rem;
+        border-color: var(--border-soft);
+        background: var(--bg-card-light);
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+        padding: 1.6rem;
+    }
+
+    .entry-panel ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        color: var(--text-light);
+    }
+
+    .entry-panel li::before {
+        content: "\2022";
+        color: var(--primary-green-deep);
+        margin-right: 0.45rem;
+    }
+
+    .panel-stamp {
+        border-radius: 12px;
+        padding: 0.65rem 0.95rem;
+        border: 1px dashed var(--border-soft);
+        font-size: 0.75rem;
+        letter-spacing: 0.35em;
+        color: var(--secondary-purple);
+        text-transform: uppercase;
+        text-align: center;
+    }
+
+    .mood-grid,
+    .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+    }
+
+    .tag-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid var(--border-soft);
+        background: rgba(255, 255, 255, 0.85);
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--text-light);
+        transition: border 0.2s ease;
+    }
+
+    body.dark .tag-option {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tag-option input {
+        accent-color: var(--secondary-purple);
+        width: 18px;
+        height: 18px;
+    }
+
+    .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: 999px;
+        padding: 0.35rem 0.85rem;
+        border: 1px solid rgba(14, 116, 144, 0.25);
+        background: rgba(255, 255, 255, 0.5);
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .tag-chip button {
+        border: none;
+        background: transparent;
+        color: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .tag-entry-row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .entry-preview-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .markdown-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+
+    .markdown-toolbar button {
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text-muted);
+        padding: 0.45rem 0.9rem;
+        font-size: 0.75rem;
+    }
+
+    .entry-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .markdown-preview {
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(255, 255, 255, 0.92);
+        max-height: 220px;
+        overflow: auto;
+    }
+
+    body.dark .markdown-preview {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .entry-form .form-control,
+    .entry-form .form-select,
+    .entry-form textarea {
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        padding: 0.75rem 1rem;
+        background: rgba(255, 255, 255, 0.97);
+        color: var(--text-light);
+        font-weight: 600;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    body.dark .entry-form .form-control,
+    body.dark .entry-form .form-select,
+    body.dark .entry-form textarea {
+        background: rgba(22, 30, 50, 0.95);
+        border-color: rgba(255, 255, 255, 0.35);
+        color: var(--text-dark);
+    }
+
+    @@media (max-width: 900px) {
+        .entry-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .entry-hero.card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+<div class="journal-scene">
+    <div class="entry-shell">
+        <header class="entry-hero card">
+            <div>
+                <p class="card-meta">new entry</p>
+                <h1 class="entry-title">Write today's page</h1>
+                <p class="entry-subtitle">Warm light, quiet thoughts, and a page that is yours.</p>
+            </div>
+            <div class="entry-date-pill">
+                <span>@entryDate.ToString("dddd")</span>
+                <strong>@entryDate.ToString("MMMM dd, yyyy")</strong>
+            </div>
+        </header>
+
+        <div class="entry-grid">
+            <section class="entry-form card">
+                <EditForm Model="@entry" OnValidSubmit="@HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="entry-fields">
+                        <div class="entry-field">
+                            <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                            <InputText id="title" class="form-control" placeholder="Give this entry a name" @bind-Value="entry.Title" />
+                            <ValidationMessage For="@(() => entry.Title)" />
+                        </div>
+                        <div class="entry-field">
+                            <label for="entryDate" class="form-label">Entry date <span class="text-danger">*</span></label>
+                            <InputDate id="entryDate" class="form-control" @bind-Value="entryDate" />
+                            <ValidationMessage For="@(() => entryDate)" />
+                            <div class="form-text">Pick the day this memory belongs to.</div>
+                        </div>
+                        <div class="entry-field full">
+                            <label for="category" class="form-label">Category</label>
+                            <InputText id="category" class="form-control" list="categoryOptions" placeholder="Add or select a category" @bind-Value="entry.Category" />
+                            <datalist id="categoryOptions">
+                                @foreach (var category in availableCategories)
+                                {
+                                    <option value="@category"></option>
+                                }
+                            </datalist>
+                            <div class="form-text">Optional, but helpful for grouping entries.</div>
+                        </div>
+                    </div>
+
+                    <div class="entry-field">
+                        <label class="form-label">Primary mood <span class="text-danger">*</span></label>
+                        <InputSelect class="form-select" @bind-Value="entry.PrimaryMood" @bind-Value:after="HandlePrimaryMoodChanged">
+                            <option value="">-- Select primary mood --</option>
+                            @foreach (var m in MoodCatalog.PrimaryMoods)
+                            {
+                                <option value="@m">@m</option>
+                            }
+                        </InputSelect>
+
+                        <ValidationMessage For="@(() => entry.PrimaryMood)" />
+                    </div>
+
+                    <div class="entry-field full">
+                        <label class="form-label">Secondary moods (up to 2)</label>
+                        <div class="mood-grid">
+                            @foreach (var mood in GetSecondaryMoodOptions())
+                            {
+                                <label class="tag-option">
+                                    <input type="checkbox"
+                                           checked="@IsMoodSelected(mood)"
+                                           disabled="@IsSecondaryMoodDisabled(mood)"
+                                           @onchange="(e) => ToggleSecondaryMood(e, mood)" />
+                                    <span>@mood</span>
+                                </label>
+                            }
+                        </div>
+                        <div class="form-text">Pick up to two supporting moods.</div>
+                        @if (!string.IsNullOrWhiteSpace(secondaryMoodMessage))
+                        {
+                            <div class="validation-message">@secondaryMoodMessage</div>
+                        }
+                    </div>
+
+                    <div class="entry-field full">
+                        <label class="form-label">Tags</label>
+                        <div class="tag-list">
+                            @foreach (var tag in availableTags)
+                            {
+                                <label class="tag-option">
+                                    <input type="checkbox"
+                                           checked="@IsTagSelected(tag)"
+                                           @onchange="(e) => ToggleTag(e, tag)" />
+                                    <span>@tag</span>
+                                </label>
+                            }
+                        </div>
+                        <div class="tag-entry-row">
+                            <InputText class="form-control" placeholder="Add a custom tag" @bind-Value="customTag" />
+                            <button type="button" class="btn btn-secondary" @onclick="AddCustomTag">Add tag</button>
+                        </div>
+                        @if (entry.Tags.Count > 0)
+                        {
+                            <div class="tag-list mt-2">
+                                @foreach (var tag in entry.Tags)
+                                {
+                                    <span class="tag-chip">
+                                        @tag
+                                        <button type="button" @onclick="() => RemoveTag(tag)">x</button>
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div class="entry-field full">
+                        <label for="entryContent" class="form-label">Entry <span class="text-danger">*</span></label>
+                        <div class="markdown-toolbar">
+                            <button type="button" @onclick='() => ApplyMarkdown("bold")'>Bold</button>
+                            <button type="button" @onclick='() => ApplyMarkdown("italic")'>Italic</button>
+                            <button type="button" @onclick='() => ApplyMarkdown("heading")'>Heading</button>
+                            <button type="button" @onclick='() => ApplyMarkdown("list")'>List</button>
+                            <button type="button" @onclick='() => ApplyMarkdown("link")'>Link</button>
+                        </div>
+                        <InputTextArea id="entryContent" class="form-control" rows="10" placeholder="Write your thoughts, experiences, or reflections here..." @bind-Value="entry.Content" />
+                        <ValidationMessage For="@(() => entry.Content)" />
+                        <div class="form-text">Markdown supported for bold, italics, lists, headings, and links.</div>
+                        <div class="entry-preview-actions">
+                            <button type="button" class="btn btn-secondary" @onclick="TogglePreview">
+                                @(showPreview ? "Hide Preview" : "Show Preview")
+                            </button>
+                        </div>
+                        @if (showPreview)
+                        {
+                            <div class="markdown-preview">
+                                @((MarkupString)MarkdownService.ToHtml(entry.Content))
+                            </div>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <strong>Error:</strong> @errorMessage
+                        </div>
+                    }
+
+                    <div class="entry-actions">
+                        <button type="submit" class="btn btn-primary">Create entry</button>
+                        <a class="btn btn-secondary" href="/journal-list">Cancel</a>
+                    </div>
+                </EditForm>
+            </section>
+
+            <aside class="entry-panel card">
+                <div>
+                    <p class="card-meta">Gentle prompts</p>
+                    <h3 class="card-title">Pause and reflect</h3>
+                    <ul>
+                        <li>What felt grounding today?</li>
+                        <li>What surprised you in a good way?</li>
+                        <li>What do you want to remember?</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="card-meta">Small rituals</p>
+                    <h3 class="card-title">Set an intention</h3>
+                    <ul>
+                        <li>Write in short lines if it helps.</li>
+                        <li>Start with one honest sentence.</li>
+                        <li>End with a soft intention.</li>
+                    </ul>
+                </div>
+                <div class="panel-stamp">Handwritten and unhurried</div>
+            </aside>
+        </div>
+    </div>
+</div>
+
+@code {
+    private JournalEntry entry = new()
+    {
+        EntryDate = DateOnly.FromDateTime(DateTime.Now)
+    };
+
+    private DateOnly entryDate = DateOnly.FromDateTime(DateTime.Now);
+    private string errorMessage = string.Empty;
+
+    private List<string> availableTags = new();
+    private List<string> availableCategories = new();
+    private string customTag = string.Empty;
+    private string secondaryMoodMessage = string.Empty;
+    private bool showPreview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var existingEntries = await JournalService.GetAllEntriesAsync();
+
+        availableTags = TagCatalog.Core
+            .Concat(existingEntries.SelectMany(entryItem => entryItem.Tags))
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(tag => tag)
+            .ToList();
+
+        availableCategories = CategoryCatalog.Default
+            .Concat(existingEntries.Select(entryItem => entryItem.Category))
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(category => category)
+            .ToList();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            errorMessage = string.Empty;
+            entry.EntryDate = entryDate;
+
+            await JournalService.CreateEntryAsync(entry);
+            Navigation.NavigateTo("/journal-list");
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception)
+        {
+            errorMessage = "An error occurred while creating the entry. Please try again.";
+        }
+    }
+
+    private void HandlePrimaryMoodChanged()
+    {
+        if (string.IsNullOrWhiteSpace(entry.PrimaryMood))
+        {
+            return;
+        }
+
+        var allowed = GetSecondaryMoodOptions();
+        entry.SecondaryMoods.RemoveAll(mood => !allowed.Contains(mood, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private void ToggleSecondaryMood(ChangeEventArgs args, string mood)
+    {
+        var isChecked = ParseCheckbox(args);
+
+        if (isChecked)
+        {
+            if (string.IsNullOrWhiteSpace(entry.PrimaryMood))
+            {
+                secondaryMoodMessage = "Select a primary mood before adding secondary moods.";
+                return;
+            }
+
+            if (IsSecondaryMoodDisabled(mood))
+            {
+                secondaryMoodMessage = "You can select up to two secondary moods.";
+                return;
+            }
+
+            if (!IsMoodSelected(mood))
+            {
+                entry.SecondaryMoods.Add(mood);
+            }
+        }
+        else
+        {
+            entry.SecondaryMoods.RemoveAll(item => string.Equals(item, mood, StringComparison.OrdinalIgnoreCase));
+        }
+
+        secondaryMoodMessage = string.Empty;
+    }
+
+    private bool IsMoodSelected(string mood)
+    {
+        return entry.SecondaryMoods.Any(item => string.Equals(item, mood, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool IsSecondaryMoodDisabled(string mood)
+    {
+        if (string.IsNullOrWhiteSpace(entry.PrimaryMood))
+        {
+            return true;
+        }
+
+        if (string.Equals(mood, entry.PrimaryMood, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return entry.SecondaryMoods.Count >= 2 && !IsMoodSelected(mood);
+    }
+
+    private List<string> GetSecondaryMoodOptions()
+    {
+        return MoodCatalog.GetSecondaryMoods(entry.PrimaryMood)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(mood => mood)
+            .ToList();
+    }
+
+    private void ToggleTag(ChangeEventArgs args, string tag)
+    {
+        var isChecked = ParseCheckbox(args);
+        if (isChecked)
+        {
+            AddTag(tag);
+        }
+        else
+        {
+            RemoveTag(tag);
+        }
+    }
+
+    private bool IsTagSelected(string tag)
+    {
+        return entry.Tags.Any(item => string.Equals(item, tag, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void AddCustomTag()
+    {
+        var tag = customTag.Trim();
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return;
+        }
+
+        AddTag(tag);
+        customTag = string.Empty;
+    }
+
+    private void AddTag(string tag)
+    {
+        if (!IsTagSelected(tag))
+        {
+            entry.Tags.Add(tag);
+        }
+
+        if (!availableTags.Any(item => string.Equals(item, tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            availableTags.Add(tag);
+            availableTags = availableTags.OrderBy(item => item).ToList();
+        }
+    }
+
+    private void RemoveTag(string tag)
+    {
+        entry.Tags.RemoveAll(item => string.Equals(item, tag, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void TogglePreview()
+    {
+        showPreview = !showPreview;
+    }
+
+    private async Task ApplyMarkdown(string action)
+    {
+        switch (action)
+        {
+            case "bold":
+                await JS.InvokeVoidAsync("markdownEditor.wrapSelection", "entryContent", "**", "**", "bold text");
+                break;
+            case "italic":
+                await JS.InvokeVoidAsync("markdownEditor.wrapSelection", "entryContent", "*", "*", "italic text");
+                break;
+            case "heading":
+                await JS.InvokeVoidAsync("markdownEditor.prefixLines", "entryContent", "# ");
+                break;
+            case "list":
+                await JS.InvokeVoidAsync("markdownEditor.prefixLines", "entryContent", "- ");
+                break;
+            case "link":
+                await JS.InvokeVoidAsync("markdownEditor.wrapSelection", "entryContent", "[", "](url)", "link text");
+                break;
+        }
+    }
+
+    private static bool ParseCheckbox(ChangeEventArgs args)
+    {
+        if (args.Value is bool boolValue)
+        {
+            return boolValue;
+        }
+
+        return string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+

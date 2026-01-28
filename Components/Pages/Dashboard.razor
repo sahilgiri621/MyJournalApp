@@ -1,0 +1,278 @@
+@page "/"
+@page "/dashboard"
+@using MyJournalApp.Models
+@using MyJournalApp.Services
+@using System.Linq
+@inject JournalService JournalService
+
+<PageTitle>Dashboard - My Journal App</PageTitle>
+
+<div class="dashboard-shell">
+    <div>
+        <p class="page-subheading">Dashboard</p>
+        <h1 class="page-heading">A calm place to reflect</h1>
+        <p class="card-description">Track entries, keep the habit gentle, and return to what matters.</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="card">
+            <h3 class="card-title">Loading insights…</h3>
+            <p class="stat-note">Hold tight while the journal paints your story.</p>
+        </div>
+    }
+    else if (overallInsights == null || rangeInsights == null)
+    {
+        <div class="card">
+            <h3 class="card-title">No insights yet</h3>
+            <p class="stat-note">Write a few entries so reflections can begin.</p>
+        </div>
+    }
+    else
+    {
+        <div class="hero-row">
+            <span>@(rangeInsights.TotalEntries) entries in this span</span>
+            <span>Current streak: @overallInsights.CurrentStreak days</span>
+        </div>
+
+        <div class="range-toolbar">
+            <div class="range-buttons">
+                <button type="button" class="range-btn @(selectedRange == RangePreset.Last7 ? "active" : string.Empty)" @onclick="() => SetRange(RangePreset.Last7)">Last 7 days</button>
+                <button type="button" class="range-btn @(selectedRange == RangePreset.Last30 ? "active" : string.Empty)" @onclick="() => SetRange(RangePreset.Last30)">30 days</button>
+                <button type="button" class="range-btn @(selectedRange == RangePreset.Custom ? "active" : string.Empty)" @onclick="() => SetRange(RangePreset.Custom)">Custom</button>
+            </div>
+            <div class="range-label">@RangeLabel</div>
+        </div>
+
+        @if (selectedRange == RangePreset.Custom)
+        {
+            <div class="range-custom">
+                <div class="form-group">
+                    <label class="form-label">start</label>
+                    <InputDate TValue="DateOnly" class="form-control" @bind-Value="CustomStart" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">end</label>
+                    <InputDate TValue="DateOnly" class="form-control" @bind-Value="CustomEnd" />
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(rangeError))
+        {
+            <div class="alert alert-warning" role="alert">@rangeError</div>
+        }
+
+        <div class="dashboard-grid">
+            <div class="left-column">
+                <section class="card today-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="card-meta">Today's entry</p>
+                            <h3 class="card-title">Today, @DateTime.Now.ToString("dddd")</h3>
+                        </div>
+                        <div class="today-value">@DateTime.Now.ToString("dd")</div>
+                    </div>
+                    <p class="card-description">@DateTime.Now.ToString("MMMM dd, yyyy")</p>
+                    <p class="card-description">
+                        @if (overallInsights.HasEntryForToday)
+                        {
+                            <span>Today is already captured — thank you for honoring the ritual.</span>
+                        }
+                        else
+                        {
+                            <span>The page is waiting whenever you feel ready.</span>
+                        }
+                    </p>
+                    <div class="today-meta">
+                        <span>Primary tone: @(TopMoodCounts.FirstOrDefault()?.Label ?? "Untracked")</span>
+                        <span>Avg words/day: @(rangeInsights.AvgWordsPerDay)</span>
+                    </div>
+                    <div class="today-cta">
+                        <a class="btn btn-primary" href="/new-entry">Write entry</a>
+                    </div>
+                </section>
+
+                <section class="card quick-actions-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="card-meta">Quick actions</p>
+                            <h3 class="card-title">Start or revisit</h3>
+                        </div>
+                    </div>
+                    <div class="quick-actions-list">
+                        <a class="btn btn-secondary quick-action-pill" href="/journal-list">Browse entries</a>
+                        <a class="btn btn-secondary quick-action-pill" href="/calendar">Open calendar</a>
+                        <a class="btn btn-secondary quick-action-pill" href="/export">Export PDF</a>
+                    </div>
+                </section>
+            </div>
+
+            <div class="right-column">
+                <section class="card streak-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="card-meta">Streaks</p>
+                            <h3 class="card-title">Momentum</h3>
+                        </div>
+                        <div class="stat-value">@overallInsights.CurrentStreak</div>
+                    </div>
+                    <p class="stat-note">Days in a row with entries.</p>
+                    <div class="stat-grid">
+                        <div class="stat-block">
+                            <p class="card-meta">Longest run</p>
+                            <div class="stat-value">@overallInsights.LongestStreak</div>
+                            <p class="stat-note">Your best streak.</p>
+                        </div>
+                        <div class="stat-block">
+                            <p class="card-meta">Missed days</p>
+                            <div class="stat-value">@overallInsights.MissedDays</div>
+                            <p class="stat-note">Days without entries since you began.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card mood-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="card-meta">Mood summary</p>
+                            <h3 class="card-title">Top tones this range</h3>
+                        </div>
+                    </div>
+                    @if (TopMoodCounts.Any())
+                    {
+                        <div class="mood-list">
+                            @for (var i = 0; i < TopMoodCounts.Count; i++)
+                            {
+                                var mood = TopMoodCounts[i];
+                                <div class="mood-pill" style="color:@GetMoodColor(i)">
+                                    <span>@mood.Label</span>
+                                    <span class="mood-count">@mood.Count</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="card-description">No mood data yet.</p>
+                    }
+                    <p class="mood-summary card-description">Track this week's emotional palette to keep a gentle pulse on how you are.</p>
+                </section>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private JournalInsights? overallInsights;
+    private JournalInsights? rangeInsights;
+    private bool isLoading = true;
+    private RangePreset selectedRange = RangePreset.Last7;
+    private DateOnly customStart = DateOnly.FromDateTime(DateTime.Today.AddDays(-6));
+    private DateOnly customEnd = DateOnly.FromDateTime(DateTime.Today);
+    private string rangeError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        overallInsights = await JournalService.GetInsightsAsync();
+        await UpdateRangeInsightsAsync();
+        isLoading = false;
+    }
+
+    private IReadOnlyList<CountItem> TopMoodCounts =>
+        rangeInsights?.MoodCounts
+            .OrderByDescending(item => item.Count)
+            .ThenBy(item => item.Label)
+            .Take(3)
+            .ToList() ?? new List<CountItem>();
+
+    private string GetMoodColor(int index) => index switch
+    {
+        0 => "var(--primary-green)",
+        1 => "var(--secondary-purple)",
+        _ => "#f0a202"
+    };
+
+    private string RangeLabel
+    {
+        get
+        {
+            return selectedRange switch
+            {
+                RangePreset.Last7 => "Last 7 days",
+                RangePreset.Last30 => "Last 30 days",
+                _ => $"{customStart:MMM dd} - {customEnd:MMM dd}"
+            };
+        }
+    }
+
+    private DateOnly CustomStart
+    {
+        get => customStart;
+        set
+        {
+            customStart = value;
+            _ = UpdateRangeInsightsAsync();
+        }
+    }
+
+    private DateOnly CustomEnd
+    {
+        get => customEnd;
+        set
+        {
+            customEnd = value;
+            _ = UpdateRangeInsightsAsync();
+        }
+    }
+
+    private async Task SetRange(RangePreset preset)
+    {
+        selectedRange = preset;
+        if (preset == RangePreset.Last7)
+        {
+            customEnd = DateOnly.FromDateTime(DateTime.Today);
+            customStart = customEnd.AddDays(-6);
+        }
+        else if (preset == RangePreset.Last30)
+        {
+            customEnd = DateOnly.FromDateTime(DateTime.Today);
+            customStart = customEnd.AddDays(-29);
+        }
+
+        await UpdateRangeInsightsAsync();
+    }
+
+    private async Task UpdateRangeInsightsAsync()
+    {
+        rangeError = string.Empty;
+        var (start, end) = GetRangeDates();
+        if (start.HasValue && end.HasValue && start.Value > end.Value)
+        {
+            rangeError = "Start date must be on or before end date.";
+            rangeInsights = await JournalService.GetInsightsAsync(null, null);
+            return;
+        }
+
+        rangeInsights = await JournalService.GetInsightsAsync(start, end);
+    }
+
+    private (DateOnly? Start, DateOnly? End) GetRangeDates()
+    {
+        return selectedRange switch
+        {
+            RangePreset.Last7 => (DateOnly.FromDateTime(DateTime.Today.AddDays(-6)), DateOnly.FromDateTime(DateTime.Today)),
+            RangePreset.Last30 => (DateOnly.FromDateTime(DateTime.Today.AddDays(-29)), DateOnly.FromDateTime(DateTime.Today)),
+            _ => (customStart, customEnd)
+        };
+    }
+
+    private enum RangePreset
+    {
+        Last7,
+        Last30,
+        Custom
+    }
+}
+
+

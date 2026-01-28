@@ -1,0 +1,11 @@
+﻿/* Scoped styles intentionally minimal; layout is styled in wwwroot/css/custom.css. */
+
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}

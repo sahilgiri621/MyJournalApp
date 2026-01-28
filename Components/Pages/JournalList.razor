@@ -1,0 +1,415 @@
+@page "/journal-list"
+@using MyJournalApp.Models
+@using MyJournalApp.Services
+@inject JournalService JournalService
+
+<PageTitle>Journal List - My Journal App</PageTitle>
+
+<div class="journal-list-page">
+    <header class="journal-list-header">
+        <div>
+            <p class="page-kicker">Journal</p>
+            <h1 class="page-heading">Your entries</h1>
+            <p class="page-subheading">Search, filter, and revisit your thoughts.</p>
+        </div>
+        <div class="header-actions">
+            <a href="/new-entry" class="btn btn-primary">New entry</a>
+        </div>
+    </header>
+
+    <div class="filter-panel journal-filter-panel card">
+        <div class="filter-grid">
+            <div class="filter-section">
+                <label class="form-label">Search</label>
+                <InputText class="form-control" placeholder="Search title or content..." @bind-Value="SearchQuery" @bind-Value:event="oninput" />
+            </div>
+
+            <div class="filter-section">
+                <label class="form-label">Start date</label>
+                <InputDate TValue="DateOnly?" class="form-control" @bind-Value="StartDate" />
+            </div>
+
+            <div class="filter-section">
+                <label class="form-label">End date</label>
+                <InputDate TValue="DateOnly?" class="form-control" @bind-Value="EndDate" />
+            </div>
+        </div>
+
+        <div class="filter-grid mt-3">
+            <div class="filter-section">
+                <label class="form-label">Filter moods</label>
+                <div class="mood-grid">
+                    @foreach (var mood in allMoods)
+                    {
+                        <label class="tag-option">
+                            <input type="checkbox" checked="@selectedMoods.Contains(mood)" @onchange="(e) => ToggleMood(e, mood)" />
+                            <span>@mood</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <label class="form-label">Filter tags</label>
+                <div class="tag-list">
+                    @foreach (var tag in availableTags)
+                    {
+                        <label class="tag-option">
+                            <input type="checkbox" checked="@selectedTags.Contains(tag)" @onchange="(e) => ToggleTag(e, tag)" />
+                            <span>@tag</span>
+                        </label>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-actions">
+            <button type="button" class="btn btn-outline-primary" @onclick="ClearFilters">Clear filters</button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info" role="alert">
+            Loading entries...
+        </div>
+    }
+    else if (filteredEntries.Count == 0)
+    {
+        <div class="alert alert-info" role="alert">
+            <div style="text-align: center;">
+                @if (allEntries.Count == 0)
+                {
+                    <h4>No journal entries yet</h4>
+                    <p>Start your journaling journey by creating your first entry.</p>
+                    <a href="/new-entry" class="btn btn-primary">Create Your First Entry</a>
+                }
+                else
+                {
+                    <h4>No entries match your filters</h4>
+                    <p>Try adjusting your search, dates, moods, or tags.</p>
+                    <button class="btn btn-outline-primary" @onclick="ClearFilters">Clear Filters</button>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="entry-grid">
+            @foreach (var entry in paginatedEntries)
+            {
+                <article class="entry-card">
+                    <div class="entry-card-header">
+                        <div>
+                            <h3 class="entry-card-title">@entry.Title</h3>
+                            <p class="entry-card-date">@entry.EntryDate.ToString("MMMM dd, yyyy")</p>
+                        </div>
+                        <div class="entry-card-mood">
+                            <span>@entry.PrimaryMood</span>
+                        </div>
+                    </div>
+
+                    @if (entry.SecondaryMoods.Count > 0)
+                    {
+                        <p class="entry-card-meta">Secondary moods: @string.Join(", ", entry.SecondaryMoods)</p>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(entry.Category) || entry.Tags.Count > 0)
+                    {
+                        <div class="tag-list">
+                            @if (!string.IsNullOrWhiteSpace(entry.Category))
+                            {
+                                <span class="tag-chip">Category: @entry.Category</span>
+                            }
+                            @foreach (var tag in entry.Tags)
+                            {
+                                <span class="tag-chip">@tag</span>
+                            }
+                        </div>
+                    }
+
+                    <p class="entry-card-preview">
+                        @GetContentPreview(entry.Content)
+                    </p>
+
+                    <div class="entry-card-footer">
+                        <span class="entry-card-created">Created @entry.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        <div class="entry-card-actions">
+                            <a href="/entry/@entry.Id" class="btn btn-sm btn-outline-primary">View</a>
+                            <a href="/edit-entry/@entry.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteEntry(entry.Id)">Delete</button>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="pagination-row">
+                <nav aria-label="Journal entries pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="#" @onclick="() => ChangePage(currentPage - 1)" @onclick:preventDefault>Previous</a>
+                        </li>
+                        @for (int i = 1; i <= totalPages; i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link" href="#" @onclick="() => ChangePage(i)" @onclick:preventDefault>@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" href="#" @onclick="() => ChangePage(currentPage + 1)" @onclick:preventDefault>Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<JournalEntry> allEntries = new();
+    private List<JournalEntry> filteredEntries = new();
+    private List<JournalEntry> paginatedEntries = new();
+    private List<string> availableTags = new();
+    private List<string> allMoods = new();
+
+    private readonly HashSet<string> selectedTags = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> selectedMoods = new(StringComparer.OrdinalIgnoreCase);
+
+    private const int PageSize = 10;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private bool isLoading = true;
+
+    private string searchQuery = string.Empty;
+    private DateOnly? startDate;
+    private DateOnly? endDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allMoods = MoodCatalog.AllMoods
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(mood => mood)
+            .ToList();
+
+        await LoadEntriesAsync();
+        isLoading = false;
+    }
+
+    private async Task LoadEntriesAsync()
+    {
+        allEntries = await JournalService.GetAllEntriesAsync();
+
+        availableTags = TagCatalog.Core
+            .Concat(allEntries.SelectMany(entry => entry.Tags))
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(tag => tag)
+            .ToList();
+
+        ApplyFilters();
+    }
+
+    private string SearchQuery
+    {
+        get => searchQuery;
+        set
+        {
+            if (string.Equals(searchQuery, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            searchQuery = value ?? string.Empty;
+            ApplyFilters();
+        }
+    }
+
+    private DateOnly? StartDate
+    {
+        get => startDate;
+        set
+        {
+            if (startDate == value)
+            {
+                return;
+            }
+
+            startDate = value;
+            ApplyFilters();
+        }
+    }
+
+    private DateOnly? EndDate
+    {
+        get => endDate;
+        set
+        {
+            if (endDate == value)
+            {
+                return;
+            }
+
+            endDate = value;
+            ApplyFilters();
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        filteredEntries = allEntries
+            .Where(MatchesFilters)
+            .ToList();
+
+        currentPage = 1;
+        CalculatePagination();
+    }
+
+    private bool MatchesFilters(JournalEntry entry)
+    {
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var query = searchQuery.Trim();
+            var matchesTitle = entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase);
+            var matchesContent = entry.Content.Contains(query, StringComparison.OrdinalIgnoreCase);
+            if (!matchesTitle && !matchesContent)
+            {
+                return false;
+            }
+        }
+
+        if (startDate.HasValue && entry.EntryDate < startDate.Value)
+        {
+            return false;
+        }
+
+        if (endDate.HasValue && entry.EntryDate > endDate.Value)
+        {
+            return false;
+        }
+
+        if (selectedMoods.Count > 0)
+        {
+            var entryMoods = entry.SecondaryMoods.Append(entry.PrimaryMood);
+            if (!entryMoods.Any(mood => selectedMoods.Contains(mood)))
+            {
+                return false;
+            }
+        }
+
+        if (selectedTags.Count > 0)
+        {
+            if (!entry.Tags.Any(tag => selectedTags.Contains(tag)))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void CalculatePagination()
+    {
+        totalPages = (int)Math.Ceiling(filteredEntries.Count / (double)PageSize);
+        if (totalPages == 0)
+        {
+            totalPages = 1;
+        }
+
+        if (currentPage > totalPages)
+        {
+            currentPage = totalPages;
+        }
+
+        var skip = (currentPage - 1) * PageSize;
+        paginatedEntries = filteredEntries.Skip(skip).Take(PageSize).ToList();
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            CalculatePagination();
+        }
+    }
+
+    private void ToggleMood(ChangeEventArgs args, string mood)
+    {
+        var isChecked = ParseCheckbox(args);
+        if (isChecked)
+        {
+            selectedMoods.Add(mood);
+        }
+        else
+        {
+            selectedMoods.Remove(mood);
+        }
+
+        ApplyFilters();
+    }
+
+    private void ToggleTag(ChangeEventArgs args, string tag)
+    {
+        var isChecked = ParseCheckbox(args);
+        if (isChecked)
+        {
+            selectedTags.Add(tag);
+        }
+        else
+        {
+            selectedTags.Remove(tag);
+        }
+
+        ApplyFilters();
+    }
+
+    private void ClearFilters()
+    {
+        searchQuery = string.Empty;
+        startDate = null;
+        endDate = null;
+        selectedMoods.Clear();
+        selectedTags.Clear();
+        ApplyFilters();
+    }
+
+    private static bool ParseCheckbox(ChangeEventArgs args)
+    {
+        if (args.Value is bool boolValue)
+        {
+            return boolValue;
+        }
+
+        return string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetContentPreview(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return "No content.";
+        }
+
+        var trimmed = content.Trim();
+        if (trimmed.Length <= 140)
+        {
+            return trimmed;
+        }
+
+        return trimmed.Substring(0, 140) + "...";
+    }
+
+    private async Task DeleteEntry(Guid id)
+    {
+        if (await JournalService.DeleteEntryAsync(id))
+        {
+            await LoadEntriesAsync();
+        }
+    }
+}
+
+
+

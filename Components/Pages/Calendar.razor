@@ -1,0 +1,98 @@
+@page "/calendar"
+@using MyJournalApp.Models
+@using MyJournalApp.Services
+@inject JournalService JournalService
+
+<PageTitle>Calendar - My Journal App</PageTitle>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Calendar Navigation</h1>
+        <a href="/new-entry" class="btn btn-primary">New Entry</a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <label class="form-label" for="calendarDate">Pick a date</label>
+            <div class="d-flex gap-2">
+                <InputDate id="calendarDate" class="form-control" @bind-Value="selectedDate" @bind-Value:after="HandleDateChanged" />
+                <button type="button" class="btn btn-outline-primary" @onclick="HandleDateChanged">Go</button>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <p class="text-muted mt-2">@statusMessage</p>
+            }
+        </div>
+    </div>
+
+    @if (selectedEntry != null)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2>@selectedEntry.Title</h2>
+                <p class="text-muted">@selectedEntry.EntryDate.ToString("MMMM dd, yyyy")</p>
+                <p class="text-muted">
+                    <strong>Mood:</strong> @selectedEntry.PrimaryMood
+                    @if (selectedEntry.SecondaryMoods.Count > 0)
+                    {
+                        <span>(Secondary: @string.Join(", ", selectedEntry.SecondaryMoods))</span>
+                    }
+                </p>
+                <div class="d-flex gap-2 mt-3">
+                    <a href="/entry/@selectedEntry.Id" class="btn btn-outline-primary">Open Entry</a>
+                    <a href="/edit-entry/@selectedEntry.Id" class="btn btn-outline-primary">Edit Entry</a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-body">
+            <h2>Recent entries</h2>
+            @if (recentEntries.Count == 0)
+            {
+                <p class="text-muted">No entries yet.</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var entry in recentEntries)
+                    {
+                        <a class="list-group-item list-group-item-action" href="/entry/@entry.Id">
+                            <strong>@entry.EntryDate.ToString("MMM dd")</strong> - @entry.Title
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private DateOnly selectedDate = DateOnly.FromDateTime(DateTime.Today);
+    private JournalEntry? selectedEntry;
+    private List<JournalEntry> recentEntries = new();
+    private string statusMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recentEntries = (await JournalService.GetAllEntriesAsync()).Take(5).ToList();
+        await LoadEntryForDateAsync();
+    }
+
+    private async Task HandleDateChanged()
+    {
+        await LoadEntryForDateAsync();
+    }
+
+    private async Task LoadEntryForDateAsync()
+    {
+        selectedEntry = await JournalService.GetEntryByDateAsync(selectedDate);
+        statusMessage = selectedEntry == null
+            ? "No entry exists for this date."
+            : string.Empty;
+    }
+}
+
+
+

@@ -1,0 +1,93 @@
+@page "/export"
+@using MyJournalApp.Services
+@using Microsoft.Maui.Storage
+@inject JournalService JournalService
+@inject PdfExportService PdfExportService
+
+<PageTitle>Export - My Journal App</PageTitle>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Export to PDF</h1>
+        <a href="/journal-list" class="btn btn-secondary">Back to List</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <p class="text-muted">Export multiple entries by date range. The PDF will be saved locally.</p>
+            <p class="form-text">Exports land inside <code>@($"{FileSystem.AppDataDirectory}\\exports")</code>.</p>
+
+            <div class="filter-grid">
+                <div class="filter-section">
+                    <label class="form-label" for="exportStart">Start date</label>
+                    <InputDate id="exportStart" class="form-control" @bind-Value="startDate" />
+                </div>
+                <div class="filter-section">
+                    <label class="form-label" for="exportEnd">End date</label>
+                    <InputDate id="exportEnd" class="form-control" @bind-Value="endDate" />
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+                <button type="button" class="btn btn-primary" @onclick="HandleExport" disabled="@isBusy">
+                    @(isBusy ? "Exporting..." : "Export PDF")
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">@errorMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <div class="alert alert-info mt-3" role="alert">@statusMessage</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private DateOnly startDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-7));
+    private DateOnly endDate = DateOnly.FromDateTime(DateTime.Today);
+    private string statusMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isBusy;
+
+    private async Task HandleExport()
+    {
+        errorMessage = string.Empty;
+        statusMessage = string.Empty;
+
+        if (startDate > endDate)
+        {
+            errorMessage = "Start date must be on or before end date.";
+            return;
+        }
+
+        var entries = await JournalService.GetEntriesInRangeAsync(startDate, endDate);
+        if (entries.Count == 0)
+        {
+            errorMessage = "No entries found in the selected date range.";
+            return;
+        }
+
+        isBusy = true;
+        try
+        {
+            var path = await PdfExportService.ExportEntriesAsync(entries, startDate, endDate);
+            statusMessage = $"Exported {entries.Count} entries to: {path}";
+        }
+        catch (Exception)
+        {
+            errorMessage = "Failed to export entries. Please try again.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}
+
+
+

@@ -1,0 +1,82 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Work+Sans:wght@400;500;600&display=swap");
+
+:root {
+    --heading-font: "Playfair Display", "Times New Roman", serif;
+    --body-font: "Work Sans", "Segoe UI", system-ui, sans-serif;
+
+    --bg-light: #fdfbf5;
+    --bg-card-light: #ffffff;
+    --text-light: #1c1a17;
+    --text-muted-light: rgba(28, 26, 23, 0.65);
+    --border-light: #cfc5b4;
+
+    --bg-dark: #050814;
+    --bg-card-dark: #11162a;
+    --text-dark: #fbfbff;
+    --text-muted-dark: rgba(251, 251, 255, 0.65);
+    --border-dark: rgba(255, 255, 255, 0.18);
+    --dark-step: rgba(255, 255, 255, 0.06);
+
+    --primary-green: #2d7d5a;
+    --primary-green-deep: #14392b;
+    --secondary-purple: #9c6ef0;
+    --secondary-purple-soft: rgba(156, 110, 240, 0.25);
+    --surface-tertiary: rgba(255, 255, 255, 0.75);
+    --text-muted: var(--text-muted-light);
+
+    --card-radius: 12px;
+    --bg-card: var(--bg-card-light);
+    --border-soft: var(--border-light);
+    --shadow-soft: 0 12px 30px rgba(10, 14, 23, 0.1);
+    --shadow-strong: 0 20px 45px rgba(10, 14, 23, 0.18);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--body-font);
+    letter-spacing: 0.01em;
+    background-color: var(--bg-light);
+    color: var(--text-light);
+    transition: background 0.35s ease, color 0.35s ease;
+}
+
+body::before {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Crect width='1' height='1' fill='%23cfc7b7'/%3E%3C/svg%3E");
+    opacity: 0.18;
+    z-index: -1;
+}
+
+body.light {
+    background-color: var(--bg-light);
+    color: var(--text-light);
+    --border-soft: var(--border-light);
+    --text-muted: var(--text-muted-light);
+    --bg-card: var(--bg-card-light);
+    --paper-texture: rgba(255, 255, 255, 0.4);
+}
+
+body.dark {
+    background-color: var(--bg-dark);
+    color: var(--text-dark);
+    --border-soft: var(--border-dark);
+    --text-muted: var(--text-muted-dark);
+    --bg-card: var(--bg-card-dark);
+    --paper-texture: rgba(255, 255, 255, 0.08);
+}
+
+body.dark::before {
+    background-image: none;
+}
+
+.text-muted {
+    color: var(--text-muted);
+}

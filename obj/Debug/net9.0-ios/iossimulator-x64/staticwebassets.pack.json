@@ -1,0 +1,57 @@
+{
+  "Files": [
+    {
+      "Id": "D:\\hearth-journal-main\\obj\\Debug\\net9.0-ios\\iossimulator-x64\\scopedcss\\bundle\\HearthJournal.styles.css",
+      "PackagePath": "staticwebassets\\HearthJournal.styles.css"
+    },
+    {
+      "Id": "D:\\hearth-journal-main\\wwwroot\\css\\app.css",
+      "PackagePath": "staticwebassets\\css\\app.css"
+    },
+    {
+      "Id": "D:\\hearth-journal-main\\wwwroot\\css\\bootstrap\\bootstrap.min.css",
+      "PackagePath": "staticwebassets\\css\\bootstrap\\bootstrap.min.css"
+    },
+    {
+      "Id": "D:\\hearth-journal-main\\wwwroot\\css\\bootstrap\\bootstrap.min.css.map",
+      "PackagePath": "staticwebassets\\css\\bootstrap\\bootstrap.min.css.map"
+    },
+    {
+      "Id": "D:\\hearth-journal-main\\wwwroot\\css\\custom.css",
+      "PackagePath": "staticwebassets\\css\\custom.css"
+    },
+    {
+      "Id": "D:\\hearth-journal-main\\wwwroot\\css\\theme.css",
+      "PackagePath": "staticwebassets\\css\\theme.css"
+    },
+    {
+      "Id": "D:\\hearth-journal-main\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "D:\\hearth-journal-main\\wwwroot\\js\\markdown-editor.js",
+      "PackagePath": "staticwebassets\\js\\markdown-editor.js"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-ios\\iossimulator-x64\\staticwebassets\\msbuild.HearthJournal.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-ios\\iossimulator-x64\\staticwebassets\\msbuild.HearthJournal.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-ios\\iossimulator-x64\\staticwebassets\\msbuild.build.HearthJournal.props",
+      "PackagePath": "build\\HearthJournal.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-ios\\iossimulator-x64\\staticwebassets\\msbuild.buildMultiTargeting.HearthJournal.props",
+      "PackagePath": "buildMultiTargeting\\HearthJournal.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-ios\\iossimulator-x64\\staticwebassets\\msbuild.buildTransitive.HearthJournal.props",
+      "PackagePath": "buildTransitive\\HearthJournal.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

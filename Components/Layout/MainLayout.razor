@@ -1,0 +1,208 @@
+@inherits LayoutComponentBase
+@using MyJournalApp.Services
+@inject ThemeService ThemeService
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="layout-shell @(AuthService.IsPinSet && !AuthService.IsUnlocked ? "is-locked" : "")">
+    <header class="top-bar">
+        <div class="top-bar-left">
+            <div class="brand-mark">MJ</div>
+            <div>
+                <p class="brand-text">My Journal App</p>
+                <p class="brand-aux">@DateTime.Now.ToString("dddd, MMM dd")</p>
+            </div>
+        </div>
+
+        <div class="top-bar-actions">
+            <span class="brand-aux">@currentPageLabel</span>
+            <button type="button" class="theme-toggle" @onclick="ToggleTheme">
+                @(ThemeService.GetCurrentTheme() == "dark" ? "Light mode" : "Dark mode")
+            </button>
+            <div class="user-avatar" title="You">MJ</div>
+            @if (AuthService.IsPinSet)
+            {
+                <button type="button" class="btn btn-primary" @onclick="LockApp">Lock</button>
+            }
+        </div>
+    </header>
+
+    <div class="layout-body">
+        <nav class="sidebar-rail">
+            <NavLink class="sidebar-item" href="/" Match="NavLinkMatch.All">
+                <span class="sidebar-icon">DB</span>
+                <span class="sidebar-label">Dashboard</span>
+            </NavLink>
+            <NavLink class="sidebar-item" href="/new-entry">
+                <span class="sidebar-icon">NE</span>
+                <span class="sidebar-label">New entry</span>
+            </NavLink>
+            <NavLink class="sidebar-item" href="/journal-list">
+                <span class="sidebar-icon">JL</span>
+                <span class="sidebar-label">View entries</span>
+            </NavLink>
+            <NavLink class="sidebar-item" href="/calendar">
+                <span class="sidebar-icon">CA</span>
+                <span class="sidebar-label">Calendar</span>
+            </NavLink>
+            <NavLink class="sidebar-item" href="/export">
+                <span class="sidebar-icon">EX</span>
+                <span class="sidebar-label">Export</span>
+            </NavLink>
+            <NavLink class="sidebar-item" href="/security">
+                <span class="sidebar-icon">SE</span>
+                <span class="sidebar-label">Security</span>
+            </NavLink>
+            <div class="sidebar-bottom">
+                <NavLink class="sidebar-cta" href="/journal-list">View entries</NavLink>
+            </div>
+        </nav>
+
+        <section class="content-zone">
+            @Body
+        </section>
+    </div>
+</div>
+
+@if (AuthService.IsPinSet && !AuthService.IsUnlocked)
+{
+    <div class="security-overlay">
+        <div class="security-card">
+            <h2>Unlock My Journal App</h2>
+            <p class="text-muted">Enter your PIN to continue.</p>
+
+            <div class="form-group mb-3">
+                <label class="form-label" for="unlockPin">PIN</label>
+                <InputText id="unlockPin" type="password" class="form-control" @bind-Value="unlockPin" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(unlockError))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @unlockError
+                </div>
+            }
+
+            <button class="btn btn-primary" @onclick="HandleUnlock">Unlock</button>
+        </div>
+    </div>
+}
+
+@code {
+    private string unlockPin = string.Empty;
+    private string unlockError = string.Empty;
+    private string currentPageLabel = "Dashboard";
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnChange += HandleAuthChanged;
+        ThemeService.OnChange += HandleThemeChanged;
+        Navigation.LocationChanged += HandleLocationChanged;
+        UpdatePageLabel();
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleThemeAsync();
+        StateHasChanged();
+    }
+
+    private void LockApp()
+    {
+        AuthService.Lock();
+    }
+
+    private async Task HandleUnlock()
+    {
+        unlockError = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(unlockPin))
+        {
+            unlockError = "Please enter your PIN.";
+            return;
+        }
+
+        var success = await AuthService.UnlockAsync(unlockPin);
+        if (!success)
+        {
+            unlockError = "Incorrect PIN. Please try again.";
+        }
+
+        unlockPin = string.Empty;
+    }
+
+    private void HandleAuthChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleThemeChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await ApplyThemeAsync();
+            StateHasChanged();
+        });
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        UpdatePageLabel();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdatePageLabel()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var path = relative.Split('?', '#')[0].Trim('/').ToLowerInvariant();
+
+        currentPageLabel = path switch
+        {
+            "" => "Dashboard",
+            "new-entry" => "New entry",
+            "journal-list" => "Journal list",
+            "calendar" => "Calendar",
+            "export" => "Export",
+            "security" => "Security",
+            "entry" => "Entry",
+            "edit-entry" => "Edit entry",
+            "weather" => "Weather",
+            "counter" => "Counter",
+            "home" => "Home",
+            _ when path.StartsWith("entry/") => "Entry",
+            _ when path.StartsWith("edit-entry/") => "Edit entry",
+            _ => "My Journal App"
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ApplyThemeAsync();
+        }
+    }
+
+    private async Task ApplyThemeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("setTheme", ThemeService.GetCurrentTheme());
+        }
+        catch (Exception)
+        {
+            // Ignore JS errors on startup to avoid breaking the layout.
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnChange -= HandleAuthChanged;
+        ThemeService.OnChange -= HandleThemeChanged;
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+}
+
+
